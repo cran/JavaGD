@@ -1,7 +1,7 @@
 #ifndef _DEV_JAVAGD_H
 #define _DEV_JAVAGD_H
 
-#define JAVAGD_VER 0x000306 /* JavaGD v0.3-6 */
+#define JAVAGD_VER 0x000401 /* JavaGD v0.4-1 */
 
 #ifdef HAVE_CONFIG_H
 # include <config.h>
@@ -15,7 +15,7 @@
 #include <Rdevices.h>
 #include <jni.h>
 
-Rboolean newXGDDeviceDriver(DevDesc*, char*, double, double, double);
+Rboolean newJavaGDDeviceDriver(DevDesc*, char*, double, double, double);
 
 /********************************************************/
 /* Each driver can have its own device-specic graphical */
@@ -62,10 +62,10 @@ typedef struct {
 
     jobject talk; /* object associated with this graphics */
     jclass  talkClass; /* class of the talk object (cached) */
-} newXGDDesc;
+} newJavaGDDesc;
 
-newXGDDesc * Rf_allocNewXGDDeviceDesc(double ps);
-int Rf_setNewXGDDeviceData(NewDevDesc *dd, double gamma_fac, newXGDDesc *xd);
+newJavaGDDesc * Rf_allocNewJavaGDDeviceDesc(double ps);
+int Rf_setNewJavaGDDeviceData(NewDevDesc *dd, double gamma_fac, newJavaGDDesc *xd);
 
 #endif
 
