@@ -1,3 +1,26 @@
+//
+//  XGDserver.java
+//  A sample implementation of the XGD1 protocol using GDCanvas for drawing
+//  
+//  Created by Simon Urbanek on Sun Apr 05 2004.
+//  Copyright (c) 2004-2009 Simon Urbanek. All rights reserved.
+//
+//  This library is free software; you can redistribute it and/or
+//  modify it under the terms of the GNU Lesser General Public
+//  License as published by the Free Software Foundation;
+//  version 2.1 of the License.
+//  
+//  This library is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+//  Lesser General Public License for more details.
+//  
+//  You should have received a copy of the GNU Lesser General Public
+//  License along with this library; if not, write to the Free Software
+//  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+//
+//  $Id: XGDserver.java 3165 2009-09-02 13:21:35Z urbanek $
+
 package org.rosuda.javaGD;
 
 import java.net.*;
@@ -5,13 +28,64 @@ import java.io.*;
 import java.awt.*;
 import org.rosuda.javaGD.*;
 
+/** XGDserver is a sample implementation of a server understanding the XGD1 protocol using {@link GDCanvas} for drawing. It is meant rather as a template for projects that wish to use R graphics device remotely via the <a href=http://rforge.net/xGD>xGD package</a>. The main customization for other projects can be done for Open (1) and Close (2) commands. */ 
 public class XGDserver extends Thread {
+    /** default TCP port used by XGD */
+    public static final int XGD_Port = 1427;
+
+    public static final byte CMD_Open       = 0x01;
+    public static final byte CMD_Close      = 0x02;
+    public static final byte CMD_Activate   = 0x03;
+    public static final byte CMD_Deactivate = 0x04;
+    public static final byte CMD_Circle     = 0x05;
+    public static final byte CMD_Clip       = 0x06;
+    public static final byte CMD_Hold       = 0x07;
+    public static final byte CMD_Locator    = 0x48;
+    public static final byte CMD_Line       = 0x09;
+    public static final byte CMD_MetricInfo = 0x4a;
+    public static final byte CMD_Mode       = 0x0b;
+    public static final byte CMD_NewPage    = 0x0c;
+    public static final byte CMD_Polygon    = 0x0d;
+    public static final byte CMD_Polyline   = 0x0e;
+    public static final byte CMD_Rect       = 0x0f;
+    public static final byte CMD_GetSize    = 0x50;
+    public static final byte CMD_StrWidth   = 0x51;
+    public static final byte CMD_Text       = 0x12;
+
+    public static final byte CMD_SetColor   = 0x13;
+    public static final byte CMD_SetFill    = 0x14;
+    public static final byte CMD_SetFont    = 0x15;
+    public static final byte CMD_SetLinePar = 0x16;
+
+    /** TCP port to listen on */
+    int port;
+    
+    /** start a new XGD server on a specific port
+     *  @param port TCP port to listen on */
+    public XGDserver(int port) {
+	this.port = port;
+    }
+
+    /** start a new XGD server on the default port */
+    public XGDserver() {
+	this.port = XGD_Port;
+    }
+    
+    /** worker class serving one client connection */
     class XGDworker extends Thread {
+	/** socket for communication with the client */
         public Socket s;
+	/** flag determining whether the client is big-endian such that the transmission byte order is maintianed accordingly */
         boolean isBE;
+	/** canvas used for drawing */
         GDCanvas c;
+	/** window (frame) containing the canvas */
         Frame f;
 
+	/** converts an integer (32-bit) from the packet stream
+	 *  @param b packet byte stream
+	 *  @param o offset in the stream
+	 *  @return integer represented in the packet and the given offset */
         int getInt(byte[] b, int o) {
             return  (isBE)?
             ((b[o+3]&255)|((b[o+2]&255)<<8)|((b[o+1]&255)<<16)|((b[o]&255)<<24))
@@ -19,6 +93,10 @@ public class XGDserver extends Thread {
             ((b[o]&255)|((b[o+1]&255)<<8)|((b[o+2]&255)<<16)|((b[o+3]&255)<<24));
         }
 
+	/** converts a long integer (64-bit) from the packet stream
+	 *  @param b packet byte stream
+	 *  @param o offset in the stream
+	 *  @return long integer represented in the packet and the given offset */
         long getLong(byte[] b, int offset) {
             long l1, l2;
             if (isBE) {
@@ -31,10 +109,18 @@ public class XGDserver extends Thread {
             return l1|(l2<<32);
         }
 
+	/** converts a double from the packet stream
+	 *  @param b packet byte stream
+	 *  @param o offset in the stream
+	 *  @return double represented in the packet and the given offset */
         double getDouble(byte[] b, int offset) {
             return Double.longBitsToDouble(getLong(b, offset));
         }
 
+	/** stores an integer (32-bit) into the packet stream
+	 *  @param v integer value to store
+	 *  @param buf packet byte stream
+	 *  @param o offset in the stream to store to (takes 4 bytes) */
         void setInt(int v, byte[] buf, int o) {
             if (!isBE) {
                 buf[o]=(byte)(v&255); o++;
@@ -49,15 +135,26 @@ public class XGDserver extends Thread {
             }
         }
 
+	/** stores a long integer (64-bit) into the packet stream
+	 *  @param l long integer value to store
+	 *  @param buf packet byte stream
+	 *  @param o offset in the stream to store to (takes 8 bytes) */
         void setLong(long l, byte[] buf, int o) {
             setInt((int)(l&0xffffffffL),buf,isBE?o+4:o);
             setInt((int)(l>>32),buf,isBE?o:o+4);
         }
 
+	/** stores a double into the packet stream
+	 *  @param d double value to store
+	 *  @param buf packet byte stream
+	 *  @param o offset in the stream to store to (takes 8 bytes) */
         void setDouble(double d, byte[] buf, int o) {
             setLong(Double.doubleToLongBits(d),buf,o);
         }
         
+	/** dumps a byte stream in hex form to {@link System.out} (with a prefix and trailing new line)
+	 *  @param s prefix string to print before the dump
+	 *  @param b byte array to print in hex */
         void dump(String s, byte[] b) {
             System.out.print(s);
             int i=0;
@@ -68,6 +165,7 @@ public class XGDserver extends Thread {
             System.out.println("");
         }
         
+	/** main thread method servicing the client */
         public void run() {
             try {
                 s.setTcpNoDelay(true); // send packets immediately (important, because R is waiting for the response)
@@ -105,7 +203,7 @@ public class XGDserver extends Thread {
                     int len = getInt(hdr,0);
                     int cmd = len&0xff;
                     len = len >> 8;
-                    System.out.println("CMD: "+hdr[3]+", length: "+len);
+                    System.out.println("CMD: "+ cmd +", length: "+len);
 
                     byte[] par=new byte[len];
 
@@ -119,7 +217,7 @@ public class XGDserver extends Thread {
 
                     //dump("Got pars: ",par);
                     
-                    if (cmd == 1) {
+                    if (cmd == CMD_Open) {
                         double w=getDouble(par, 0);
                         double h=getDouble(par, 8);
                         System.out.println("Open("+w+",+"+h+")");
@@ -137,7 +235,7 @@ public class XGDserver extends Thread {
                         f.setVisible(true);
                     }
 
-                    if (cmd == 2) {
+                    if (cmd == CMD_Close) {
                         if (f!=null) {
                             f.removeAll();
                             f.dispose();
@@ -148,27 +246,27 @@ public class XGDserver extends Thread {
                         return;
                     }
 
-                    if (cmd == 9 && c!=null) {
+                    if (cmd == CMD_Line && c!=null) {
                         c.add(new GDLine(getDouble(par,0), getDouble(par,8), getDouble(par,16), getDouble(par,24)));
                     }
 
-                    if (cmd == 15 && c!=null) {
+                    if (cmd == CMD_Rect && c!=null) {
                         c.add(new GDRect(getDouble(par,0), getDouble(par,8), getDouble(par,16), getDouble(par,24)));
                     }
 
-                    if (cmd == 5 && c!=null) {
+                    if (cmd == CMD_Circle && c!=null) {
                         c.add(new GDCircle(getDouble(par,0), getDouble(par,8), getDouble(par,16)));
                     }
 
-                    if (cmd == 11 && c!=null) {
+                    if (cmd == CMD_Mode && c!=null) {
                         if (getInt(par, 0)==0) c.repaint();
                     }
 
-                    if (cmd == 12 && c!=null) {
+                    if (cmd == CMD_NewPage && c!=null) {
                         c.reset();
                     }
 
-                    if ((cmd == 13 || cmd == 14) && c!=null) {
+                    if ((cmd == CMD_Polygon || cmd == CMD_Polyline) && c!=null) {
                         int pn=getInt(par,0);
                         int i=0;
                         double x[], y[];
@@ -179,33 +277,33 @@ public class XGDserver extends Thread {
                             y[i]=getDouble(par, 4 + i*8 + pn*8);
                             i++;
                         }
-                        c.add(new GDPolygon(pn, x, y, cmd==14));
+                        c.add(new GDPolygon(pn, x, y, cmd == CMD_Polyline));
                     }
                     
-                    if (cmd == 18 && c!=null) {
+                    if (cmd == CMD_Text && c!=null) {
                         c.add(new GDText(getDouble(par,0), getDouble(par,8), getDouble(par,16), getDouble(par,24), new String(par,32,par.length-33)));
                     }
 
-                    if (cmd == 0x13 && c!=null) {
+                    if (cmd == CMD_SetColor && c!=null) {
                         c.add(new GDColor(getInt(par,0)));
                     }
 
-                    if (cmd == 0x14 && c!=null) {
+                    if (cmd == CMD_SetFill && c!=null) {
                         c.add(new GDFill(getInt(par,0)));
                     }
 
-                    if (cmd == 0x15 && c!=null) {
+                    if (cmd == CMD_SetFont && c!=null) {
                         GDFont xf=new GDFont(getDouble(par,0), getDouble(par,8), getDouble(par,16), getInt(par,24), new String(par,32,par.length-33));
                         c.add(xf);
                         // we need to set Canvas' internal font to this new font for further metrics calculations
                         c.gs.f=xf.font;
                     }
 
-                    if (cmd == 0x16 && c!=null) {
+                    if (cmd == CMD_SetLinePar && c!=null) {
                         c.add(new GDLinePar(getDouble(par,0), getInt(par,8)));
                     }
                     
-                    if (cmd == 0x50) {
+                    if (cmd == CMD_GetSize) {
                         byte[] b = new byte[4*8 + 4];
                         setInt((0x50 | 0x80) | ((4*8)<<8), b, 0);
                         double width=0d, height=0d;
@@ -222,7 +320,7 @@ public class XGDserver extends Thread {
                         sos.flush();
                     }
                     
-                    if (cmd == 0x51) { // StrWidth
+                    if (cmd == CMD_StrWidth) { // StrWidth
                         String s=new String(par, 0, par.length-1);
                         System.out.println("Request: get string width of \""+s+"\"");
                         byte[] b= new byte[12];
@@ -242,7 +340,7 @@ public class XGDserver extends Thread {
                         sos.flush();
                     }
 
-                    if (cmd == 0x4a) { // MetricInfo
+                    if (cmd == CMD_MetricInfo) { // MetricInfo
                         int ch=getInt(par, 0);
                         System.out.println("Request: metric info for char "+ch);
                         byte[] b= new byte[4 + 3*8];
@@ -276,9 +374,10 @@ public class XGDserver extends Thread {
         }
     }
 
+    /** main server method listening on port 1427 and serving clients. It dispatches new worker threads for each accepted connection. */
     public void run() {
         try {
-            ServerSocket s=new ServerSocket(1427);
+            ServerSocket s=new ServerSocket(port);
             while(true) {
                 Socket cs=s.accept();
                 System.out.println("Accepted connection, spawning new worker thread.");
@@ -293,12 +392,16 @@ public class XGDserver extends Thread {
         }
     }
 
+    /** starts a new XGD server. Note that there can only be one active server at the time unless the TCP port number is changed.
+     *  @return new XGD server instance */
     public static XGDserver startServer() {
         XGDserver s=new XGDserver();
         s.start();
         return s;
     }
 
+    /** main method - calls {@link #startServer()}
+     *  @param args command line arguments (currently ignored) */
     public static void main(String[] args) {
         System.out.println("Starting XGDserver.");
         startServer();
