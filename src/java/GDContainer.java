@@ -5,7 +5,7 @@
 //  Created by Simon Urbanek on Thu Aug 05 2004.
 //  Copyright (c) 2004 __MyCompanyName__. All rights reserved.
 //
-//  $Id: GDContainer.java,v 1.4 2004/12/22 21:02:10 urbaneks Exp $
+//  $Id: GDContainer.java 1295 2004-12-22 21:02:10Z urbaneks $
 
 package org.rosuda.javaGD;
 

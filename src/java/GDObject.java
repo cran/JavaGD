@@ -5,7 +5,7 @@
 //  Created by Simon Urbanek on Thu Aug 05 2004.
 //  Copyright (c) 2004 Simon Urbanek. All rights reserved.
 //
-//  $Id: GDObject.java,v 1.5 2005/01/05 15:31:45 urbaneks Exp $
+//  $Id: GDObject.java 2708 2007-03-06 14:59:58Z urbanek $
 
 package org.rosuda.javaGD;
 
@@ -144,6 +144,7 @@ class GDFont extends GDObject {
         if (face==2) jFT=Font.BOLD;
         if (face==3) jFT=Font.ITALIC;
         if (face==4) jFT=Font.BOLD|Font.ITALIC;
+		if (face==5) family="Symbol";
         font=new Font(family.equals("")?null:family, jFT, (int)(cex*ps+0.5));
     }
 
