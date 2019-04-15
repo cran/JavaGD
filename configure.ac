@@ -15,6 +15,7 @@ CPP=`${RBIN} CMD config CPP`;
 CFLAGS=`${RBIN} CMD config CFLAGS`
 AC_SUBST(R_HOME)
 
+AC_LANG(C)
 # Checks for programs.
 AC_PROG_CC
 
@@ -100,13 +101,13 @@ CFLAGS="${CFLAGS} ${XTRA_CF} ${JAVA_CPPFLAGS0}"
 LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${JAVA_LD_LIBRARY_PATH0}"
 
 AC_MSG_CHECKING([whether JNI programs can be compiled])
-AC_LINK_IFELSE([
+AC_LINK_IFELSE([AC_LANG_SOURCE([
 #include <jni.h>
 int main(void) {
     jobject o;
     return 0;
 }
-	],[AC_MSG_RESULT(yes)],
+	])],[AC_MSG_RESULT(yes)],
 	[AC_MSG_ERROR([Cannot compile a simple JNI program. See config.log for details.])])
 
 AC_SUBST(JAVA_LIBS)
