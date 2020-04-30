@@ -11,11 +11,10 @@ if test -z "${R_HOME}"; then
 fi
 RBIN="${R_HOME}/bin/R"
 CC=`${RBIN} CMD config CC`;
-CPP=`${RBIN} CMD config CPP`;
+CPP="$CC -E"
 CFLAGS=`${RBIN} CMD config CFLAGS`
 AC_SUBST(R_HOME)
 
-AC_LANG(C)
 # Checks for programs.
 AC_PROG_CC
 
