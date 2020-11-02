@@ -1,5 +1,5 @@
 Package: JavaGD
-Version: 0.6-2
+Version: 0.6-4
 Title: Java Graphics Device
 Author: Simon Urbanek <Simon.Urbanek@R-project.org>
 Maintainer: Simon Urbanek <Simon.Urbanek@R-project.org>
@@ -13,6 +13,6 @@ License: GPL-2 | GPL-3
 SystemRequirements: GNU make and Java JDK 1.2 or higher
 URL: http://www.rforge.net/JavaGD/
 NeedsCompilation: yes
-Packaged: 2020-04-29 23:24:18 UTC; svnuser
+Packaged: 2020-11-02 02:44:45 UTC; svnuser
 Repository: CRAN
-Date/Publication: 2020-04-30 06:14:15 UTC
+Date/Publication: 2020-11-02 07:50:02 UTC
